@@ -1,0 +1,40 @@
+﻿Column Name,Description,Description_eng
+Id,Уникальный идентификатор,Unique identifier
+Model,Модель машины,Car model
+Price,Цена,Price
+Age_08_04,Возраст машины (в месяцах),Age of the car (in months)
+Mfg_Month,Месяц производства,Manufacturing month
+Mfg_Year,Год производства,Manufacturing year
+KM,Пробег,Mileage
+Fuel_Type,Тип топлива,Fuel type
+HP,Лошадиные силы,Horsepower
+Met_Color,"Металлик (1 - да, 0 - нет)","Metallic color (1 - yes, 0 - no)"
+Color,Цвет,Color
+Automatic,"Автоматическая коробка передач (1 - да, 0 - нет)","Automatic transmission (1 - yes, 0 - no)"
+CC,Объем двигателя,Engine capacity
+Doors,Количество дверей,Number of doors
+Cylinders,Количество цилиндров,Number of cylinders
+Gears,Количество передач,Number of gears
+Quarterly_Tax,Ежеквартальный налог,Quarterly tax
+Weight,Вес,Weight
+Mfr_Guarantee,"Гарантия от производителя (1 - да, 0 - нет)","Manufacturer guarantee (1 - yes, 0 - no)"
+BOVAG_Guarantee,"Гарантия от BOVAG (1 - да, 0 - нет)","BOVAG guarantee (1 - yes, 0 - no)"
+Guarantee_Period,Период гарантии,Guarantee period
+ABS,"ABS (1 - да, 0 - нет)","ABS (1 - yes, 0 - no)"
+Airbag_1,"Подушка безопасности водителя (1 - да, 0 - нет)","Driver airbag (1 - yes, 0 - no)"
+Airbag_2,"Подушка безопасности пассажира (1 - да, 0 - нет)","Passenger airbag (1 - yes, 0 - no)"
+Airco,"Кондиционер (1 - да, 0 - нет)","Air conditioning (1 - yes, 0 - no)"
+Automatic_airco,"Автоматический кондиционер (1 - да, 0 - нет)","Automatic air conditioning (1 - yes, 0 - no)"
+Boardcomputer,"Бортовой компьютер (1 - да, 0 - нет)","On-board computer (1 - yes, 0 - no)"
+CD_Player,"CD плеер (1 - да, 0 - нет)","CD player (1 - yes, 0 - no)"
+Central_Lock,"Центральный замок (1 - да, 0 - нет)","Central lock (1 - yes, 0 - no)"
+Powered_Windows,"Электрические стеклоподъемники (1 - да, 0 - нет)","Power windows (1 - yes, 0 - no)"
+Power_Steering,"Гидроусилитель руля (1 - да, 0 - нет)","Power steering (1 - yes, 0 - no)"
+Radio,"Радио (1 - да, 0 - нет)","Radio (1 - yes, 0 - no)"
+Mistlamps,"Противотуманные фары (1 - да, 0 - нет)","Fog lights (1 - yes, 0 - no)"
+Sport_Model,"Спортивная модель (1 - да, 0 - нет)","Sport model (1 - yes, 0 - no)"
+Backseat_Divider,"Разделитель задних сидений (1 - да, 0 - нет)","Backseat divider (1 - yes, 0 - no)"
+Metallic_Rim,"Металлические диски (1 - да, 0 - нет)","Metallic rims (1 - yes, 0 - no)"
+Radio_cassette,"Магнитола с радиоприемником и кассетным проигрывателем (1 - да, 0 - нет)","Radio cassette player (1 - yes, 0 - no)"
+Parking_Assistant,"Помощь при парковке (1 - да, 0 - нет)","Parking assistant (1 - yes, 0 - no)"
+Tow_Bar,"Фаркоп (1 - да, 0 - нет)","Tow bar (1 - yes, 0 - no)"
