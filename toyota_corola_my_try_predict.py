@@ -13,15 +13,24 @@ from image_slider import ImageSlider
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 
 DATA_VISUALISATION = False  # hide/show execution of code section with data visualisation
-COMBINE_COMFORT_FEATURES = False
+COMBINE_COMFORT_FEATURES = True
 
 all_image_plots_folder = 'all_image_plots'
 df = pd.read_csv('ToyotaCorolla.csv')
+
+results_columns = ['model_name', 'combine_comfort_features', 'MSE', 'R-squared', 'hyperparams_used']
+model_results = pd.DataFrame(columns=results_columns)
+model_results = model_results.astype({
+    'model_name': str,
+    'combine_comfort_features': bool,
+    'MSE': float,
+    'R-squared': float,
+    'hyperparams_used': bool
+})
 
 
 def check_vif(X):
@@ -30,6 +39,19 @@ def check_vif(X):
     vif_data["VIF"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
     print(vif_data)
 
+
+def add_result(model_name: str, combine_comfort_features: bool, mse: float, r_squared: float,
+               hyperparams_used: bool = None):
+    global model_results
+    new_row = pd.Series({
+        'model_name': model_name,
+        'combine_comfort_features': combine_comfort_features,
+        'MSE': mse,
+        'R-squared': r_squared,
+        'hyperparams_used': hyperparams_used
+    })
+
+    model_results = model_results._append(new_row, ignore_index=True)
 
 
 data = df.copy()
@@ -44,7 +66,7 @@ if DATA_VISUALISATION:
     # show a price histogram
     # Purpose: Allows to estimate the distribution of car prices in dataset. The KDE curve (Kernel Density Estimate)
     # provides an approximation of the probability density of the price distribution.
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(10, 5))
     sns.histplot(data['Price'], bins=30, kde=True)
     plt.title('Price distibution')
     plt.xlabel('price')
@@ -54,8 +76,8 @@ if DATA_VISUALISATION:
     # The scatter plot for the price depends on the age of the machine
     # Purpose: Allows to visually assess how the price of a car depends on its age. If there are clear trends (for
     # example, a decrease in price with increasing age), then they will be visible on the chart.
-    plt.figure(figsize=(10,5))
-    sns.scatterplot(x='Age_08_04',y='Price', data=data)
+    plt.figure(figsize=(10, 5))
+    sns.scatterplot(x='Age_08_04', y='Price', data=data)
     plt.title('the dependence of the price on the age of the car')
     plt.xlabel('the age of the car')
     plt.ylabel('price')
@@ -64,7 +86,7 @@ if DATA_VISUALISATION:
     # boxplot for the price depends on the type of fuel
     # Purpose: Allows you to compare the price distribution for different types of fuel. The box plot shows the median,
     # quartiles and emissions, which is useful for identifying possible price differences between different fuel types
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(10, 5))
     sns.boxplot(x='Fuel_Type', y='Price', data=data)
     plt.xlabel('fuel type')
     plt.ylabel('price')
@@ -102,12 +124,11 @@ if DATA_VISUALISATION:
 
 # there are columns with datatype: object, transform into numeric and remove those
 object_columns = data.select_dtypes(include=['object']).columns.tolist()
-print("="*99,"\n",f"before transformations columns with datatype: object: {object_columns}")
+print("=" * 99, "\n", f"before transformations columns with datatype: object: {object_columns}")
 
 print(f"all fuel types: {data['Fuel_Type'].unique()}")
-data['Fuel_Type_code'] = pd.factorize(data['Fuel_Type'])[0]+1
+data['Fuel_Type_code'] = pd.factorize(data['Fuel_Type'])[0] + 1
 print(f"all fuel types as code: {data['Fuel_Type_code'].unique()}")
-
 
 print(f"al colors: {data['Color'].unique()}")
 data['Color_code'] = pd.factorize(data['Color'])[0] + 1
@@ -115,10 +136,10 @@ print(f"all colors as code: {data['Color_code'].unique()}")
 
 # after transforming drop initial columns
 # also drop model because all cars are the same model (Toyota Corolla)
-data.drop(columns=['Model', 'Fuel_Type', 'Color'],axis=1, inplace=True)
+data.drop(columns=['Model', 'Fuel_Type', 'Color'], axis=1, inplace=True)
 
 object_columns = data.select_dtypes(include=['object']).columns.tolist()
-print("="*99,"\n",f"after transformations: columns with datatype: object: {object_columns}")
+print("=" * 99, "\n", f"after transformations: columns with datatype: object: {object_columns}")
 
 # - - - - - - - data preparation : end :   - - - - - - -  -#
 
@@ -185,7 +206,7 @@ check_vif(X)
 
 # split the data into training and testing data
 
-X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 # checking the shapes of training and testing splits
 print(f"X_train.shape: {X_train.shape}")
 print(f"y_train.shape: {y_train.shape}")
@@ -197,17 +218,23 @@ from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor, GradientBoostingRegressor
 
+
 #     Linear Regression
 def linear_regression(X_train, y_train, X_test, y_test):
+    global COMBINE_COMFORT_FEATURES
     lm_model = LinearRegression()
     lm_model.fit(X_train, y_train)
     y_lm_pred = lm_model.predict(X_test)
-    print(f"MSE: {mean_squared_error(y_test, y_lm_pred)}")
-    result_r2_score = r2_score(y_test, y_lm_pred)
-    print(f"R2 score: {result_r2_score}")
+    linear_reg_mse = mean_squared_error(y_test, y_lm_pred)
+    print(f"MSE: {linear_reg_mse}")
+    linear_reg_r2_score = r2_score(y_test, y_lm_pred)
+    print(f"R2 score: {linear_reg_r2_score}")
+    add_result('linear_regression', COMBINE_COMFORT_FEATURES, linear_reg_mse, linear_reg_r2_score)
 
 
-# linear_regression(X_train, y_train, X_test, y_test)
+linear_regression(X_train, y_train, X_test, y_test)
+
+
 # result:
 #   - with combine comfort features:
 #       - MSE: 1700090.7866237424
@@ -229,15 +256,22 @@ def decision_tree_regressor(hyperparam: bool):
         )
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        print(f"MSE (hyperparam: True): {mean_squared_error(y_test, y_pred)}")
-        print(f"R-squared (hyperparam: True): {r2_score(y_test, y_pred)}")
+        tree_reg_mse = mean_squared_error(y_test, y_pred)
+        tree_reg_r_squared = r2_score(y_test, y_pred)
+        print(f"MSE (hyperparam: True): {tree_reg_mse}")
+        print(f"R-squared (hyperparam: True): {tree_reg_r_squared}")
+        add_result('decision_tree_regressor', COMBINE_COMFORT_FEATURES, tree_reg_mse, tree_reg_r_squared, True)
     else:
         model = DecisionTreeRegressor()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        print(f"MSE (hyperparam: False): {mean_squared_error(y_test, y_pred)}")
-        R2 = r2_score(y_test, y_pred)
-        print(f"R-squared (hyperparam: False): {R2}")
+        tree_reg_mse = mean_squared_error(y_test, y_pred)
+        print(f"MSE (hyperparam: False): {tree_reg_mse}")
+        tree_reg_r_squared = r2_score(y_test, y_pred)
+        print(f"R-squared (hyperparam: False): {tree_reg_r_squared}")
+        add_result('decision_tree_regressor', COMBINE_COMFORT_FEATURES, tree_reg_mse, tree_reg_r_squared, False)
+
+
 """
 criterion = 'squared_error' parameter specifies the function used to measure the quality of a split. For a decision tree
              regressor, the commonly used criterion is mean squared error ('squared_error'), which minimizes the
@@ -251,7 +285,8 @@ max_depth = 20 parameter limits the maximum depth of the decision tree. In this 
 random_state = 0 parameter sets the seed for the random number generator. This ensures reproducibility, as using the
               same random seed will result in the same tree structure if the data and other parameters are kept constant
 """
-# decision_tree_regressor(hyperparam=False)
+
+decision_tree_regressor(hyperparam=False)
 # result:
 #   - with combine comfort features:
 #       - MSE (hyperparam: False): 1628104.5208333333
@@ -260,7 +295,9 @@ random_state = 0 parameter sets the seed for the random number generator. This e
 #       - MSE (hyperparam: False): 1686094.5416666667
 #       - R-squared (hyperparam: False): 0.8736325245480777
 
-# decision_tree_regressor(hyperparam=True)
+decision_tree_regressor(hyperparam=True)
+
+
 # result:
 #   - with combine comfort features:
 #       - MSE (hyperparam: True): 1894145.0432098764
@@ -275,12 +312,16 @@ def random_forest_regressor():
     model = RandomForestRegressor()
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
-    print(f"MSE (RandomForest Regressor): {mean_squared_error(y_test, y_pred)}")
-    R2 = r2_score(y_test, y_pred)
-    print(f"R-squared (RandomForest Regressor): {R2}")
+    rn_forest_reg_mse = mean_squared_error(y_test, y_pred)
+    print(f"MSE (RandomForest Regressor): {rn_forest_reg_mse}")
+    rn_forest_reg_r_squared = r2_score(y_test, y_pred)
+    print(f"R-squared (RandomForest Regressor): {rn_forest_reg_r_squared}")
+    add_result('random_forest_regressor', COMBINE_COMFORT_FEATURES, rn_forest_reg_mse, rn_forest_reg_r_squared)
 
 
-# random_forest_regressor()
+random_forest_regressor()
+
+
 # result:
 #   - with combine comfort features:
 #       - MSE (RandomForest Regressor): 976000.0723611112
@@ -307,6 +348,7 @@ def hist_gradient_boosting_regressor(hyperparam):
         r2 = r2_score(y_test, y_pred)
         print(f"MSE (Hist Gradient Boosting Regressor hyperparam: True): {mse}")
         print(f"R-squared (Hist Gradient Boosting Regressor hyperparam: True): {r2}")
+        add_result('hist_gradient_boosting_regressor', COMBINE_COMFORT_FEATURES, mse, r2, True)
     else:
         model = HistGradientBoostingRegressor()
         model.fit(X_train, y_train)
@@ -315,6 +357,8 @@ def hist_gradient_boosting_regressor(hyperparam):
         r2 = r2_score(y_test, y_pred)
         print(f"MSE (Hist Gradient Boosting Regressor hyperparam: False): {mse}")
         print(f"R-squared (Hist Gradient Boosting Regressor hyperparam: False): {r2}")
+        add_result('hist_gradient_boosting_regressor', COMBINE_COMFORT_FEATURES, mse, r2, False)
+
 
 """
 learning_rate = 0.1 parameter controls the contribution of each tree to the final prediction. It scales the contribution
@@ -332,6 +376,7 @@ validation_fraction = 0.1 parameter controls the proportion of training data to 
                       early stopping. Early stopping can prevent overfitting by monitoring the performance on 
                       the validation set and stopping training when the performance plateaus.
 """
+
 hist_gradient_boosting_regressor(hyperparam=False)
 # result:
 #   - with combine comfort features:
@@ -339,32 +384,41 @@ hist_gradient_boosting_regressor(hyperparam=False)
 #       - R-squared (Hist Gradient Boosting Regressor hyperparam: False): 0.9233256138924284
 #   - without combine comfort features:
 #       - MSE (Hist Gradient Boosting Regressor hyperparam: False): 954629.1526114694
-#       - R-squared (hyperparam: False): 0.8736325245480777
+#       - R-squared (Hist Gradient Boosting Regressor hyperparam: False): 0.928453551667942
 
 hist_gradient_boosting_regressor(hyperparam=True)
+
+
 # result:
 #   - with combine comfort features:
 #       - MSE (Hist Gradient Boosting Regressor hyperparam: True): 940857.4444660763
 #       - R-squared (Hist Gradient Boosting Regressor hyperparam: True): 0.9294856978186992
 #   - without combine comfort features:
-#       - MSE (hyperparam: False): 1686094.5416666667
-#       - R-squared (hyperparam: False): 0.8736325245480777
+#       - MSE (Hist Gradient Boosting Regressor hyperparam: True): 891152.7170746825
+#       - R-squared (Hist Gradient Boosting Regressor hyperparam: True): 0.9332109105889557
+
+# Gradient Boosting Regressor
+def gradient_boosting_regressor():
+    model = GradientBoostingRegressor()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    print(f"MSE (Gradient Boosting Regressor): {mse}")
+    print(f"R-squared (Gradient Boosting Regressor): {r2}")
+    add_result('gradient_boosting_regressor', COMBINE_COMFORT_FEATURES, mse, r2)
 
 
+gradient_boosting_regressor()
+# result:
+#   - with combine comfort features:
+#       - MSE (Gradient Boosting Regressor): 899834.2401939466
+#       - R-squared (Gradient Boosting Regressor): 0.9325602577740937
+#   - without combine comfort features:
+#       - MSE (Gradient Boosting Regressor): 852500.6772306839
+#       - R-squared (Gradient Boosting Regressor): 0.9361077592385724
 
-
-
-
-
-
-
-
-
+print("==" * 99)
+print(f"model_results:\n{model_results.head(50)}")
 print(f"COMBINE_COMFORT_FEATURES: {COMBINE_COMFORT_FEATURES}")
 # - - - - - - - testing different approaches of models : end :   - - - - - - - #
-
-
-
-
-
-
