@@ -150,8 +150,8 @@ X = data.drop(columns=['Price'], axis=1)
 y = data['Price']
 
 # Check Multicollinearity Assumption
-correlation_matrix = data.corr()
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+# correlation_matrix = data.corr()
+# sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
 # plt.show()
 
 check_vif(X)
@@ -407,6 +407,7 @@ def gradient_boosting_regressor():
     print(f"MSE (Gradient Boosting Regressor): {mse}")
     print(f"R-squared (Gradient Boosting Regressor): {r2}")
     add_result('gradient_boosting_regressor', COMBINE_COMFORT_FEATURES, mse, r2)
+    return model
 
 
 gradient_boosting_regressor()
@@ -422,3 +423,180 @@ print("==" * 99)
 print(f"model_results:\n{model_results.head(50)}")
 print(f"COMBINE_COMFORT_FEATURES: {COMBINE_COMFORT_FEATURES}")
 # - - - - - - - testing different approaches of models : end :   - - - - - - - #
+
+# - - - - - - - review : start :   - - - - - - - #
+# after a short review of results, the best result:
+#       MSE (Gradient Boosting Regressor): 902644.5464443122
+#       R-squared (Gradient Boosting Regressor): 0.9323496341718404
+
+# Add Predicted Values in column 'Y_predicted'
+best_model = gradient_boosting_regressor()
+y_predicted = best_model.predict(X)
+data['Y_predicted'] = y_predicted
+# Add residual values in column 'Residuals'
+data['Residuals'] = data['Price'] - data['Y_predicted']
+print(data[['Id', 'Price', 'Y_predicted', 'Residuals']].head(15))
+
+#          Check Assumptions of Regression          #
+"""
+To evaluate linearity, plot the residuals on the vertical axis against the corresponding Xi values of the 
+independent variable on the horizontal axis. If the model is appropriate for the data, you will not see any apparent 
+pattern in the residual plot. However, if the model is not appropriate, in the residual plot, there will be a 
+relationship between the Xi values and the residuals.
+"""
+plt.figure(figsize=(15, 5))
+plt.subplots_adjust(hspace=0.6)
+
+plt.subplot(1, 3, 1)
+sns.scatterplot(data, x='Age_08_04', y='Residuals')
+plt.axhline(y=0, color='r', linestyle='--')
+plt.xlabel('Age of Car')
+plt.ylabel('Residuals')
+plt.title('Residuals vs Age of Car')
+
+plt.subplot(1, 3, 2)
+sns.scatterplot(data, x='KM', y='Residuals')
+plt.axhline(y=0, color='r', linestyle='--')
+plt.xlabel('Kilometer')
+plt.ylabel('Residuals')
+plt.title('Residuals vs Kilometer')
+
+plt.subplot(1, 3, 3)
+sns.scatterplot(data, x='Weight', y='Residuals')
+plt.axhline(y=0, color='r', linestyle='--')
+plt.xlabel('Weight')
+plt.ylabel('Residuals')
+plt.title('Residuals vs Weight')
+
+plt.show()
+# In general, based on these graphs, the following conclusions can be drawn:
+#
+# - The assumption of linear regression is fulfilled for the dependence of the price of a car on its age,
+#   but it is not ideal.
+# - The assumption of linear regression is not fulfilled for the dependence of the price of a car on its mileage.
+# - The assumption of linear regression can be made for the dependence of the price of a car on its weight, but a
+#   more thorough analysis of the data is necessary.
+
+# Statistical tests should be used to more accurately analyze the assumption of linear regression. One such test
+# is the Durbin-Watson test. This test allows to assess how well the data corresponds to a linear relationship.
+# If the Durbin-Watson test shows that the data does not correspond to a linear relationship, then it is necessary
+# to use a regression model that takes into account the nonlinear dependence of the data.
+
+#               Durbin-Watson test              #
+# Durbin-Watson statistic will :
+#           - approach 0 if successive residuals are positively autocorrelated
+#           - close to 2 if the residuals are not correlated
+#           - greater than 2 and could even approach its maximum value of 4 residuals are negatively auto correlated
+#
+
+from statsmodels.stats.stattools import durbin_watson
+
+durbin_watson_test_results = durbin_watson(data['Residuals'].values)
+print(durbin_watson_test_results)
+# Durbin test result value is close to 2. Therefore, we can say that, Independence or Error assumption is satisfying.
+
+#               Check Normality Assumption              #
+# evaluate the assumption of normality in the errors by constructing a histogram or Normal Probability plot of residuals
+plt.figure(figsize=(12, 6))
+sns.histplot(data, x='Residuals', bins=80, kde=True)
+plt.show()
+
+from scipy.stats import probplot
+
+plt.figure(figsize=(12, 6))
+
+probplot(data['Residuals'], dist='norm', plot=plt)
+plt.title("Normal Probability Plot")
+plt.xlabel("Theoretical Qunatiles")
+plt.ylabel("Ordered Residuals")
+plt.show()
+# Normal Probability Plot tell us that Normality assumption is satisfying.
+
+# Check Homoscedasticity Assumption by plotting Residuals against Y_predicted
+plt.figure(figsize=(12, 6))
+sns.scatterplot(data, x='Y_predicted', y='Residuals')
+plt.axhline(y=0, color='r', linestyle='--')
+plt.show()
+
+#                Breusch-Pagan Test                 #
+import statsmodels.api as sm
+from statsmodels.stats.diagnostic import het_breuschpagan
+bp_test = het_breuschpagan(data['Residuals'], X)
+print("Breusch-Pagan test p-value:", bp_test[1])
+
+
+# From above plot and Breusch-Pagan Test Result we can say that, Equal Variance assumption is not satisfying.
+# To satisfy this assumption, we will do WLS Regression with different weights.
+
+# 1. Weighted Least Square Regression with weight = 1/var(residuals)
+residuals = data['Residuals']
+weights = 1 / residuals.var()
+wls_model = sm.WLS(y, sm.add_constant(X), weights = weights).fit()
+# Perform the Breusch-Pagan test for homoscedasticity
+bp_test = het_breuschpagan(wls_model.resid, wls_model.model.exog)
+# Display the Breusch-Pagan test results
+print("Breusch-Pagan test p-value:", bp_test[1]) # Breusch-Pagan test p-value: 1.124773588963084e-59
+
+# 2. Weighted Least Square Regression with weight = 1/std(residuals)
+residuals = data['Residuals']
+weights = 1 / residuals.std()
+wls_model = sm.WLS(y, sm.add_constant(X), weights = weights).fit()
+# Perform the Breusch-Pagan test for homoscedasticity
+bp_test = het_breuschpagan(wls_model.resid, wls_model.model.exog)
+# Display the Breusch-Pagan test results
+print("Breusch-Pagan test p-value:", bp_test[1]) # Breusch-Pagan test p-value: 1.12477358896347e-59
+
+# 3. Weighted Least Square Regression with weight = 1/y_hat
+fitted_values = data['Y_predicted']
+weights = 1 / fitted_values
+# Handle cases where predicted values are zero
+weights[weights == np.inf] = 1e10
+wls_model = sm.WLS(y, sm.add_constant(X), weights = weights).fit()
+# Perform the Breusch-Pagan test for homoscedasticity
+bp_test = het_breuschpagan(wls_model.resid, wls_model.model.exog)
+# Display the Breusch-Pagan test results
+print("Breusch-Pagan test p-value:", bp_test[1]) # Breusch-Pagan test p-value: 2.5433049852477167e-64
+
+# 4. Weighted Least Square Regression with Residuals and weight = 1/(y_hat)^2
+# Store absolute Residuals in residuals
+residuals = np.abs(data['Residuals'])
+
+# Fit a linear regression model with absolute residuals
+model2 = sm.OLS(residuals, sm.add_constant(X)).fit()
+
+# Calculate weights for the WLS model with a small constant added
+epsilon = 1e-6
+weights = 1 / (np.power(model2.fittedvalues,2) + epsilon)
+# Fit the WLS model
+wls_model = sm.WLS(y, sm.add_constant(X), weights = weights).fit()
+# Perform the Breusch-Pagan test for homoscedasticity
+bp_test = het_breuschpagan(wls_model.resid, wls_model.model.exog)
+# Display the results of the Breusch-Pagan test
+print("Breusch-Pagan test p-value:", bp_test[1]) # Breusch-Pagan test p-value: 7.194223544567987e-53
+
+# 5. Weighted Least Square Regression with (Residuals)^2 and weight = 1/(y_hat)^2
+# Calculate absolute residuals
+abs_residual = np.power(np.abs(data['Residuals']), 2)
+# Fit a linear regression model with absolute residuals
+model2 = sm.OLS(abs_residual, sm.add_constant(X)).fit()
+# Calculate weights for the WLS model with a small constant added
+epsilon = 1e-6
+wt2 = 1 / (np.power(model2.fittedvalues, 2) + epsilon)
+# Fit the WLS model
+wls_model = sm.WLS(y, sm.add_constant(X), weights=wt2).fit()
+# Perform the Breusch-Pagan test for homoscedasticity
+bp_test = het_breuschpagan(wls_model.resid, wls_model.model.exog)
+# Display the results of the Breusch-Pagan test
+print("Breusch-Pagan test p-value:", bp_test[1]) # Breusch-Pagan test p-value: 4.3722928903176776e-57
+
+# !!!!!!!!!
+# Even After trying various WLS Regression models, Equal Variance Assumption is not Satisying.
+
+# Save Model
+
+import joblib
+best_model_name = best_model.__class__.__name__ + 'model.pkl'
+print(best_model_name)
+joblib.dump(best_model, best_model_name)
+
+# - - - - - - - review : end :   - - - - - - - #
